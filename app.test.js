@@ -8,4 +8,10 @@ describe("Homepage", () => {
       .expect(200)
       .expect("Welcome to the HomePage", done);
   });
+  test("should display welcome to the Books Inventory with status code 200", done => {
+    request(app)
+      .get("/books")
+      .expect(200)
+      .expect("Welcome to the Books Inventory", done);
+  });
 });
