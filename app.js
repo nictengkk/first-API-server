@@ -10,6 +10,6 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 app.use("/", index);
-app.use("/books", books);
+app.use("/api/v1/books", books);
 
 module.exports = app;
