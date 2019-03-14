@@ -3,7 +3,7 @@ const router = express.Router();
 
 const books = [
   { id: "1", name: "The Intelligent Investor", author: "Benjamin Graham" },
-  { id: "2", name: "Way of the Wolf", author: "Jordon Belfort" },
+  { id: "2", name: "Way of the Wolf", author: "Jordan Belfort" },
   { id: "3", name: "Beating the Street", author: "Peter Lynch" }
 ];
 
@@ -45,7 +45,13 @@ router
     res.status(202).json(book); //can be chained because res.status returns an object that requires parsing.
   })
   .delete((req, res) => {
-    res.status(202).end();
+    const book = req.body;
+    book.id = req.params.id;
+    if (book.id) {
+      res.status(202).end();
+    } else {
+      res.status(400).end();
+    }
   });
 
 module.exports = router;

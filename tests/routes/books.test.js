@@ -3,7 +3,7 @@ const app = require("../../app");
 
 const booksSampleData = [
   { id: "1", name: "The Intelligent Investor", author: "Benjamin Graham" },
-  { id: "2", name: "Way of the Wolf", author: "Jordon Belfort" },
+  { id: "2", name: "Way of the Wolf", author: "Jordan Belfort" },
   { id: "3", name: "Beating the Street", author: "Peter Lynch" }
 ];
 
@@ -41,13 +41,22 @@ describe("Books", () => {
         .expect({ name: "One Up On Wall Street" });
     });
     test("Should delete a book from the db", () => {
-      return request(app)
-        .delete(route)
-        .expect(202);
+      if (route) {
+        return request(app)
+          .delete(route)
+          .expect(202);
+      } else if ((route = "/books/50")) {
+        return request(app)
+          .delete(route)
+          .ok(res => res.status === 400)
+          .then(res => {
+            expect(res.status).toBe(400);
+          });
+      }
     });
   });
 
-  describe("/books?query", () => {
+  describe("QUERY", () => {
     let route = "/books";
     test("should return book(s) of the same author", () => {
       return request(app)
@@ -65,7 +74,7 @@ describe("Books", () => {
         .query({ name: "Way of the Wolf" })
         .expect(200)
         .expect([
-          { id: "2", name: "Way of the Wolf", author: "Jordon Belfort" }
+          { id: "2", name: "Way of the Wolf", author: "Jordan Belfort" }
         ]);
     });
   });
@@ -91,3 +100,14 @@ describe("Books", () => {
   //     });
   //   });
 });
+
+//error handing
+
+// test("fails as there is no such book", () => {
+//   return request(app)
+//   .delete(route)
+//   .ok(res=>res.status === 400)
+//   .then(res=>{
+//     expect(res.status).toBe(400)
+//   })
+// });
