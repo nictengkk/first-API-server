@@ -47,6 +47,29 @@ describe("Books", () => {
     });
   });
 
+  describe("/books?query", () => {
+    let route = "/books";
+    test("should return book(s) of the same author", () => {
+      return request(app)
+        .get(route)
+        .query({ author: "Peter Lynch" })
+        .expect(200)
+        .expect([
+          { id: "3", name: "Beating the Street", author: "Peter Lynch" }
+        ]);
+    });
+
+    test("should return book(s) of the same name", () => {
+      return request(app)
+        .get(route)
+        .query({ name: "Way of the Wolf" })
+        .expect(200)
+        .expect([
+          { id: "2", name: "Way of the Wolf", author: "Jordon Belfort" }
+        ]);
+    });
+  });
+
   // describe("/books/3", () => {
   //   let route = "/books/3";
   //   test("should update a book", () => {

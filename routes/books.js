@@ -10,8 +10,21 @@ const books = [
 router
   .route("/")
   .get((req, res) => {
-    res.status(200);
-    res.json(books);
+    const { author, name } = req.query;
+
+    if (author) {
+      const foundBooks = books.filter(book => {
+        return book.author === author;
+      });
+      res.status(200).json(foundBooks);
+    } else if (name) {
+      const foundBooks = books.filter(book => {
+        return book.name === name;
+      });
+      res.status(200).json(foundBooks);
+    } else {
+      res.status(200).json(books);
+    }
   })
   .post((req, res) => {
     const book = req.body;
