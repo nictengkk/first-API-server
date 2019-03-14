@@ -2,26 +2,69 @@ const request = require("supertest");
 const app = require("../../app");
 
 const booksSampleData = [
-  { id: "1", name: "abc", author: "abcde" },
-  { id: "2", name: "def", author: "defgh" },
-  { id: "3", name: "ghi", author: "ghijk" }
+  { id: "1", name: "The Intelligent Investor", author: "Benjamin Graham" },
+  { id: "2", name: "Way of the Wolf", author: "Jordon Belfort" },
+  { id: "3", name: "Beating the Street", author: "Peter Lynch" }
 ];
 
 describe("Books", () => {
-  let route = "/books";
-  test("should display list of books", () => {
-    return request(app)
-      .get(route)
-      .expect(200)
-      .expect("Content-type", /json/)
-      .expect(booksSampleData);
+  describe("/books", () => {
+    let route = "/books";
+    test("should display list of books", () => {
+      return request(app) //access the app
+        .get(route)
+        .expect(200)
+        .expect("Content-type", /json/)
+        .expect(booksSampleData);
+    });
+    test("should add a book", () => {
+      return request(app)
+        .post(route)
+        .set("Accept", "application/json")
+        .send({ name: "Rich Dad Poor Dad", author: "Robert Kiyosaki" })
+        .expect(201)
+        .expect({
+          id: "4",
+          name: "Rich Dad Poor Dad",
+          author: "Robert Kiyosaki"
+        });
+    });
   });
-  test("should add a book", () => {
-    return request(app)
-      .post(route)
-      .set("Accept", "application/json")
-      .send({ id: "4", name: "jkl", author: "jklmn" })
-      .expect(201)
-      .expect({ id: "4", name: "jkl", author: "jklmn" });
+
+  describe("/books/3", () => {
+    let route = "/books/3";
+    test("should edit a book's name", () => {
+      return request(app)
+        .put(route)
+        .send({ name: "One Up On Wall Street" })
+        .expect(202)
+        .expect({ name: "One Up On Wall Street" });
+    });
+    test("Should delete a book from the db", () => {
+      return request(app)
+        .delete(route)
+        .expect(202);
+    });
   });
+
+  // describe("/books/3", () => {
+  //   let route = "/books/3";
+  //   test("should update a book", () => {
+  //     return request(app)
+  //       .put(route)
+  //       .send({ name: "mno" })
+  //       .expect(202)
+  //       .then(res => {
+  //         expect(res.body.name).toEqual("mno");
+  //         expect(res.body.id).toEqual("3");
+  //         expect(res.body.author).toEqual("ghijk");
+  // expect(res.body).toEqual({
+  //   id: expect.any(String),
+  //   name: expect.any(String),
+  //   author: expect.any(String)
+  // });
+  // });
+  // .expect({ name: "mno" });
+  //     });
+  //   });
 });
