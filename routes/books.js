@@ -54,10 +54,13 @@ router
   .route("/:id")
   .put((req, res) => {
     const book = req.body;
-    book.title = "One Up On Wall Street";
-    // book.id = req.params.id;
+    book.id = req.params.id;
     // book.author = req.body.author;
-    res.status(202).json(book); //can be chained because res.status returns an object that requires parsing.
+    if (book.id) {
+      res.status(202).json(book); //can be chained because res.status returns an object that requires parsing.
+    } else {
+      res.status(400).end();
+    }
   })
   .delete((req, res) => {
     const book = req.body;

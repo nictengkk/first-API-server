@@ -7,59 +7,23 @@ const booksSampleData = [
   { id: "3", title: "Beating the Street", author: "Peter Lynch" }
 ];
 
-describe("[GET] Books", () => {
-  let route = "/books";
+const route = (params = "") => {
+  const path = "/api/v1/books";
+  return `${path}/${params}`;
+};
+
+describe("[GET] Search for books", () => {
   test("should display list of books", () => {
     return request(app) //access the app
-      .get(route)
+      .get(route())
       .expect(200)
       .expect("Content-type", /json/)
       .expect(booksSampleData);
   });
-  // test("should add a book", () => {
-  //   return request(app)
-  //     .post(route)
-  //     .set("Accept", "application/json")
-  //     .send({ title: "Rich Dad Poor Dad", author: "Robert Kiyosaki" })
-  //     .expect(201)
-  //     .expect({
-  //       id: "4",
-  //       title: "Rich Dad Poor Dad",
-  //       author: "Robert Kiyosaki"
-  //     });
-  // });
-});
 
-describe("/books/3", () => {
-  let route = "/books/3";
-  test("should edit a book's title", () => {
+  test("should display book(s) of author query", () => {
     return request(app)
-      .put(route)
-      .send({ title: "One Up On Wall Street" })
-      .expect(202)
-      .expect({ title: "One Up On Wall Street" });
-  });
-  test("Should delete a book from the db", () => {
-    if (route) {
-      return request(app)
-        .delete(route)
-        .expect(202);
-    } else if ((route = "/books/50")) {
-      return request(app)
-        .delete(route)
-        .ok(res => res.status === 400)
-        .then(res => {
-          expect(res.status).toBe(400);
-        });
-    }
-  });
-});
-
-describe("QUERY", () => {
-  let route = "/books";
-  test("should return book(s) of the same author", () => {
-    return request(app)
-      .get(route)
+      .get(route())
       .query({ author: "Peter Lynch" })
       .expect(200)
       .expect([
@@ -67,9 +31,9 @@ describe("QUERY", () => {
       ]);
   });
 
-  test("should return book(s) of the same title", () => {
+  test("should display book(s) of title query", () => {
     return request(app)
-      .get(route)
+      .get(route())
       .query({ title: "Way of the Wolf" })
       .expect(200)
       .expect([
@@ -78,43 +42,10 @@ describe("QUERY", () => {
   });
 });
 
-// describe("/books/3", () => {
-//   let route = "/books/3";
-//   test("should update a book", () => {
-//     return request(app)
-//       .put(route)
-//       .send({ title: "mno" })
-//       .expect(202)
-//       .then(res => {
-//         expect(res.body.title).toEqual("mno");
-//         expect(res.body.id).toEqual("3");
-//         expect(res.body.author).toEqual("ghijk");
-// expect(res.body).toEqual({
-//   id: expect.any(String),
-//   title: expect.any(String),
-//   author: expect.any(String)
-// });
-// });
-// .expect({ title: "mno" });
-//     });
-//   });
-
-//error handing
-
-// test("fails as there is no such book", () => {
-//   return request(app)
-//   .delete(route)
-//   .ok(res=>res.status === 400)
-//   .then(res=>{
-//     expect(res.status).toBe(400)
-//   })
-// });
-
-describe("[POST] Creates a new book", () => {
-  let route = "/books";
+describe("[POST] Creates a new book entry", () => {
   test("denies access when no token is provided", () => {
     return request(app)
-      .post(route)
+      .post(route())
       .set("Content-type", "application/json")
       .send({ title: "Rich Dad Poor Dad", author: "Robert Kiyosaki" })
       .ok(res => res.status === 403)
@@ -123,9 +54,9 @@ describe("[POST] Creates a new book", () => {
       });
   });
 
-  test("deny access when incorrect token is given", () => {
+  test("denies access when incorrect token is given", () => {
     return request(app)
-      .post(route)
+      .post(route())
       .set("Authorization", "Bearer some-invalid-token")
       .set("Content-type", "application/json")
       .send({ title: "Rich Dad Poor Dad", author: "Robert Kiyosaki" })
@@ -137,7 +68,7 @@ describe("[POST] Creates a new book", () => {
 
   test("grants access when correct token is given", () => {
     return request(app)
-      .post(route)
+      .post(route())
       .set("Authorization", "Bearer my-awesome-token")
       .set("Content-type", "application/json")
       .send({ title: "Rich Dad Poor Dad", author: "Robert Kiyosaki" })
@@ -145,9 +76,67 @@ describe("[POST] Creates a new book", () => {
       .then(res => {
         expect(res.body).toEqual({
           id: expect.any(String),
-          title: expect.any(String),
-          author: expect.any(String)
+          title: "Rich Dad Poor Dad",
+          author: "Robert Kiyosaki"
         });
       });
+  });
+});
+
+describe("[PUT] Edits an existing book entry", () => {
+  test("Successfully edit a book's title", () => {
+    const id = 3;
+    return request(app)
+      .put(route(id))
+      .send({
+        id: `${id}`,
+        name: "One up on Wall Street",
+        author: "Peter Lynch"
+      })
+      .expect(202)
+      .expect({
+        id: `${id}`,
+        name: "One up on Wall Street",
+        author: "Peter Lynch"
+      });
+  });
+
+  test("Fails to edit book as no such id", () => {
+    const id = 100;
+    return (
+      request(app)
+        .put(route(id))
+        .send({
+          id: `${id}`,
+          name: "One up on Wall Street",
+          author: "Peter Lynch"
+        })
+        // .ok(res => res.status === 400)
+        .catch(res => {
+          expect(res.status).toBe(400);
+        })
+    );
+  });
+});
+
+describe("[DELETE] Deletes an existing book entry", () => {
+  test("Successfully delete a book entry", () => {
+    const id = 3;
+    return request(app)
+      .delete(route(id))
+      .expect(202);
+  });
+
+  test("Fails to delete a book as it does not exist", () => {
+    const id = 100;
+    return request(app)
+      .delete(route(id))
+      .catch(res => {
+        expect(res.status).toBe(400); //is it because delete route 100 calls an error by default, so catch err?
+      });
+    // .ok(res => res.status === 400)
+    // .then(res => {
+    //   expect(res.status).toBe(400);
+    // });
   });
 });
