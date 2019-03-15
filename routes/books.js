@@ -7,7 +7,6 @@ const books = [
   { id: "3", title: "Beating the Street", author: "Peter Lynch" }
 ];
 
-//authentication function
 const verifyToken = (req, res, next) => {
   const { authorization } = req.headers;
   if (!authorization) {
@@ -24,48 +23,39 @@ const verifyToken = (req, res, next) => {
 router
   .route("/")
   .get((req, res) => {
-    const { author, title } = req.query;
-
-    if (author) {
-      const foundBooks = books.filter(book => {
-        return book.author === author;
-      });
-      res.status(200).json(foundBooks);
-    } else if (title) {
-      const foundBooks = books.filter(book => {
-        return book.title === title;
-      });
-      res.status(200).json(foundBooks);
-    } else {
+    const query = req.query;
+    if (Object.entries(query).length === 0) {
       res.status(200).json(books);
+    } else {
+      const keys = Object.keys(query);
+      const filteredBooks = books.filter(book =>
+        keys.some(key => book[key] === query[key])
+      );
+      res.status(200).json(filteredBooks);
     }
   })
   .post(verifyToken, (req, res) => {
     const book = req.body;
-    book.id = "4"; //change this to update dynamically based on db
+    book.id = "4";
     books.push(book);
-    // add it to your db
     res.status(201).json(book);
   });
 
-//add verifyToken fn into .post(verifyToken, (req, res))=>{})
-
 router
   .route("/:id")
-  .put((req, res) => {
+  .put(verifyToken, (req, res) => {
     const book = req.body;
     book.id = req.params.id;
-    // book.author = req.body.author;
-    if (book.id) {
+    if (book.id <= books.length) {
       res.status(202).json(book); //can be chained because res.status returns an object that requires parsing.
     } else {
-      res.status(400).end();
+      res.status(403).end();
     }
   })
   .delete((req, res) => {
     const book = req.body;
     book.id = req.params.id;
-    if (book.id) {
+    if (book.id <= books.length) {
       res.status(202).end();
     } else {
       res.status(400).end();

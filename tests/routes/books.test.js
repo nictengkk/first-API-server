@@ -21,23 +21,14 @@ describe("[GET] Search for books", () => {
       .expect(booksSampleData);
   });
 
-  test("should display book(s) of author query", () => {
+  test("should display book(s) of different author and title queries", () => {
     return request(app)
       .get(route())
-      .query({ author: "Peter Lynch" })
+      .query({ author: "Peter Lynch", title: "Way of the Wolf" })
       .expect(200)
       .expect([
+        { id: "2", title: "Way of the Wolf", author: "Jordan Belfort" },
         { id: "3", title: "Beating the Street", author: "Peter Lynch" }
-      ]);
-  });
-
-  test("should display book(s) of title query", () => {
-    return request(app)
-      .get(route())
-      .query({ title: "Way of the Wolf" })
-      .expect(200)
-      .expect([
-        { id: "2", title: "Way of the Wolf", author: "Jordan Belfort" }
       ]);
   });
 });
@@ -48,8 +39,7 @@ describe("[POST] Creates a new book entry", () => {
       .post(route())
       .set("Content-type", "application/json")
       .send({ title: "Rich Dad Poor Dad", author: "Robert Kiyosaki" })
-      .ok(res => res.status === 403)
-      .then(res => {
+      .catch(res => {
         expect(res.status).toBe(403);
       });
   });
@@ -84,10 +74,42 @@ describe("[POST] Creates a new book entry", () => {
 });
 
 describe("[PUT] Edits an existing book entry", () => {
-  test("Successfully edit a book's title", () => {
+  test("denies access when no token is provided", () => {
     const id = 3;
     return request(app)
       .put(route(id))
+      .send({
+        id: `${id}`,
+        name: "One up on Wall Street",
+        author: "Peter Lynch"
+      })
+      .ok(res => res.status === 403)
+      .then(res => {
+        expect(res.status).toBe(403);
+      });
+  });
+
+  test("denies access when invalid token is provided", () => {
+    const id = 3;
+    return request(app)
+      .put(route(id))
+      .set("Authorization", "Bearer some-invalid-token")
+      .send({
+        id: `${id}`,
+        name: "One up on Wall Street",
+        author: "Peter Lynch"
+      })
+      .ok(res => res.status === 403)
+      .then(res => {
+        expect(res.status).toBe(403);
+      });
+  });
+
+  test("Successfully edit a book's title with the correct token", () => {
+    const id = 3;
+    return request(app)
+      .put(route(id))
+      .set("Authorization", "Bearer my-awesome-token")
       .send({
         id: `${id}`,
         name: "One up on Wall Street",
@@ -101,21 +123,19 @@ describe("[PUT] Edits an existing book entry", () => {
       });
   });
 
-  test("Fails to edit book as no such id", () => {
+  test("Fails to edit book as no such id despite valid token", () => {
     const id = 100;
-    return (
-      request(app)
-        .put(route(id))
-        .send({
-          id: `${id}`,
-          name: "One up on Wall Street",
-          author: "Peter Lynch"
-        })
-        // .ok(res => res.status === 400)
-        .catch(res => {
-          expect(res.status).toBe(400);
-        })
-    );
+    return request(app)
+      .put(route(id))
+      .set("Authorization", "Bearer my-awesome-token")
+      .send({
+        id: `${id}`,
+        name: "One up on Wall Street",
+        author: "Peter Lynch"
+      })
+      .catch(res => {
+        expect(res.status).toBe(403);
+      });
   });
 });
 
@@ -129,14 +149,12 @@ describe("[DELETE] Deletes an existing book entry", () => {
 
   test("Fails to delete a book as it does not exist", () => {
     const id = 100;
+
     return request(app)
       .delete(route(id))
-      .catch(res => {
-        expect(res.status).toBe(400); //is it because delete route 100 calls an error by default, so catch err?
+      .ok(res => res.status === 400)
+      .then(res => {
+        expect(res.status).toBe(400);
       });
-    // .ok(res => res.status === 400)
-    // .then(res => {
-    //   expect(res.status).toBe(400);
-    // });
   });
 });
