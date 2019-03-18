@@ -1,5 +1,6 @@
 const express = require("express");
 const router = express.Router();
+const Book = require("../models/books");
 
 const books = [
   { id: "1", title: "The Intelligent Investor", author: "Benjamin Graham" },
@@ -35,10 +36,17 @@ router
     }
   })
   .post(verifyToken, (req, res) => {
-    const book = req.body;
-    book.id = "4";
-    books.push(book);
-    res.status(201).json(book);
+    const book = new Book(req.body);
+    book.save((err, book) => {
+      if (err) {
+        return res.status(500).end();
+      } else {
+        return res.status(201).json(book);
+      }
+    });
+    // book.id = "4";
+    // books.push(book);
+    // res.status(201).json(book);
   });
 
 router
