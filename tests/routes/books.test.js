@@ -1,4 +1,6 @@
 const request = require("supertest");
+const mongoose = require("mongoose");
+const { MongoMemoryServer } = require("mongodb-memory-server");
 const app = require("../../app");
 
 const booksSampleData = [
@@ -12,149 +14,177 @@ const route = (params = "") => {
   return `${path}/${params}`;
 };
 
-describe("[GET] Search for books", () => {
-  test("should display list of books", () => {
-    return request(app) //access the app
-      .get(route())
-      .expect(200)
-      .expect("Content-type", /json/)
-      .expect(booksSampleData);
+describe("Books", () => {
+  let mongoServer;
+
+  //this is done because each test sends in a data set into the original database, which makes it dirty. We want the test db to appear and disappear after each test during dev mode.
+  beforeAll(async () => {
+    jest.setTimeout(120000); //in case each default test timeout of 5s is not enough for the async to complete.
+    mongoServer = new MongoMemoryServer(); //start mongodb in test mode
+    const mongoUri = await mongoServer.getConnectionString();
+    await mongoose.connect(mongoUri);
+    // to kill the memory of storing a temp database
+    // db.dropCollection(("books", err)=>{
+    //   console.error(err)
+    // })
   });
 
-  test("should display book(s) of different author and title queries", () => {
-    return request(app)
-      .get(route())
-      .query({ author: "Peter Lynch", title: "Way of the Wolf" })
-      .expect(200)
-      .expect([
-        { id: "2", title: "Way of the Wolf", author: "Jordan Belfort" },
-        { id: "3", title: "Beating the Street", author: "Peter Lynch" }
-      ]);
-  });
-});
-
-describe("[POST] Creates a new book entry", () => {
-  test("denies access when no token is provided", () => {
-    return request(app)
-      .post(route())
-      .set("Content-type", "application/json")
-      .send({ title: "Rich Dad Poor Dad", author: "Robert Kiyosaki" })
-      .catch(res => {
-        expect(res.status).toBe(403);
-      });
+  afterAll(async () => {
+    mongoose.disconnect();
+    await mongoServer.stop();
   });
 
-  test("denies access when incorrect token is given", () => {
-    return request(app)
-      .post(route())
-      .set("Authorization", "Bearer some-invalid-token")
-      .set("Content-type", "application/json")
-      .send({ title: "Rich Dad Poor Dad", author: "Robert Kiyosaki" })
-      .ok(res => res.status === 403)
-      .then(res => {
-        expect(res.status).toBe(403);
-      });
+  describe("[GET] Search for books", () => {
+    test("should display list of books", () => {
+      return request(app) //access the app
+        .get(route())
+        .expect(200)
+        .expect("Content-type", /json/)
+        .expect(booksSampleData);
+    });
+
+    test("should display book(s) of different author and title queries", () => {
+      return request(app)
+        .get(route())
+        .query({ author: "Peter Lynch", title: "Way of the Wolf" })
+        .expect(200)
+        .expect([
+          { id: "2", title: "Way of the Wolf", author: "Jordan Belfort" },
+          { id: "3", title: "Beating the Street", author: "Peter Lynch" }
+        ]);
+    });
   });
 
-  test("grants access when correct token is given", () => {
-    return request(app)
-      .post(route())
-      .set("Authorization", "Bearer my-awesome-token")
-      .set("Content-type", "application/json")
-      .send({ title: "Rich Dad Poor Dad", author: "Robert Kiyosaki" })
-      .expect(201)
-      .then(res => {
-        expect(res.body).toEqual({
-          id: expect.any(String),
-          title: "Rich Dad Poor Dad",
-          author: "Robert Kiyosaki"
+  describe("[POST] Creates a new book entry", () => {
+    test("denies access when no token is provided", () => {
+      return request(app)
+        .post(route())
+        .set("Content-type", "application/json")
+        .send({ title: "Rich Dad Poor Dad", author: "Robert Kiyosaki" })
+        .catch(res => {
+          expect(res.status).toBe(403);
         });
-      });
-  });
-});
+    });
 
-describe("[PUT] Edits an existing book entry", () => {
-  test("denies access when no token is provided", () => {
-    const id = 3;
-    return request(app)
-      .put(route(id))
-      .send({
-        id: `${id}`,
-        name: "One up on Wall Street",
-        author: "Peter Lynch"
-      })
-      .ok(res => res.status === 403)
-      .then(res => {
-        expect(res.status).toBe(403);
-      });
-  });
+    test("denies access when incorrect token is given", () => {
+      return request(app)
+        .post(route())
+        .set("Authorization", "Bearer some-invalid-token")
+        .set("Content-type", "application/json")
+        .send({ title: "Rich Dad Poor Dad", author: "Robert Kiyosaki" })
+        .ok(res => res.status === 403)
+        .then(res => {
+          expect(res.status).toBe(403);
+        });
+    });
 
-  test("denies access when invalid token is provided", () => {
-    const id = 3;
-    return request(app)
-      .put(route(id))
-      .set("Authorization", "Bearer some-invalid-token")
-      .send({
-        id: `${id}`,
-        name: "One up on Wall Street",
-        author: "Peter Lynch"
-      })
-      .ok(res => res.status === 403)
-      .then(res => {
-        expect(res.status).toBe(403);
-      });
-  });
-
-  test("Successfully edit a book's title with the correct token", () => {
-    const id = 3;
-    return request(app)
-      .put(route(id))
-      .set("Authorization", "Bearer my-awesome-token")
-      .send({
-        id: `${id}`,
-        name: "One up on Wall Street",
-        author: "Peter Lynch"
-      })
-      .expect(202)
-      .expect({
-        id: `${id}`,
-        name: "One up on Wall Street",
-        author: "Peter Lynch"
-      });
+    test("grants access when correct token is given", () => {
+      return request(app)
+        .post(route())
+        .set("Authorization", "Bearer my-awesome-token")
+        .set("Content-type", "application/json")
+        .send({ title: "Rich Dad Poor Dad", author: "Robert Kiyosaki" })
+        .expect(201)
+        .then(res => {
+          expect(res.body).toEqual(
+            expect.objectContaining({
+              title: "Rich Dad Poor Dad",
+              author: "Robert Kiyosaki"
+            })
+          );
+          // toEqual({
+          //   _id: expect.any(String),
+          //   __v: expect.any(Number),
+          //   title: "Rich Dad Poor Dad",
+          //   author: "Robert Kiyosaki"
+          // });
+        });
+    });
   });
 
-  test("Fails to edit book as no such id despite valid token", () => {
-    const id = 100;
-    return request(app)
-      .put(route(id))
-      .set("Authorization", "Bearer my-awesome-token")
-      .send({
-        id: `${id}`,
-        name: "One up on Wall Street",
-        author: "Peter Lynch"
-      })
-      .catch(res => {
-        expect(res.status).toBe(403);
-      });
+  describe("[PUT] Edits an existing book entry", () => {
+    test("denies access when no token is provided", () => {
+      const id = 3;
+      return request(app)
+        .put(route(id))
+        .send({
+          id: `${id}`,
+          name: "One up on Wall Street",
+          author: "Peter Lynch"
+        })
+        .ok(res => res.status === 403)
+        .then(res => {
+          expect(res.status).toBe(403);
+        });
+    });
+
+    test("denies access when invalid token is provided", () => {
+      const id = 3;
+      return request(app)
+        .put(route(id))
+        .set("Authorization", "Bearer some-invalid-token")
+        .send({
+          id: `${id}`,
+          name: "One up on Wall Street",
+          author: "Peter Lynch"
+        })
+        .ok(res => res.status === 403)
+        .then(res => {
+          expect(res.status).toBe(403);
+        });
+    });
+
+    test("Successfully edit a book's title with the correct token", () => {
+      const id = 3;
+      return request(app)
+        .put(route(id))
+        .set("Authorization", "Bearer my-awesome-token")
+        .send({
+          id: `${id}`,
+          name: "One up on Wall Street",
+          author: "Peter Lynch"
+        })
+        .expect(202)
+        .expect({
+          id: `${id}`,
+          name: "One up on Wall Street",
+          author: "Peter Lynch"
+        });
+    });
+
+    test("Fails to edit book as no such id despite valid token", () => {
+      const id = 100;
+      return request(app)
+        .put(route(id))
+        .set("Authorization", "Bearer my-awesome-token")
+        .send({
+          id: `${id}`,
+          name: "One up on Wall Street",
+          author: "Peter Lynch"
+        })
+        .catch(res => {
+          expect(res.status).toBe(403);
+        });
+    });
   });
-});
 
-describe("[DELETE] Deletes an existing book entry", () => {
-  test("Successfully delete a book entry", () => {
-    const id = 3;
-    return request(app)
-      .delete(route(id))
-      .expect(202);
-  });
+  describe("[DELETE] Deletes an existing book entry", () => {
+    test("Successfully delete a book entry", () => {
+      const id = 3;
+      return request(app)
+        .delete(route(id))
+        .expect(202);
+    });
 
-  test("Fails to delete a book as it does not exist", () => {
-    const id = 100;
+    test("Fails to delete a book as it does not exist", () => {
+      const id = 100;
 
-    return request(app)
-      .delete(route(id))
-      .ok(res => res.status === 400)
-      .then(res => {
-        expect(res.status).toBe(400);
-      });
+      return request(app)
+        .delete(route(id))
+        .ok(res => res.status === 400)
+        .then(res => {
+          expect(res.status).toBe(400);
+        });
+    });
   });
 });
