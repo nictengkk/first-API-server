@@ -1,9 +1,15 @@
 const app = require("./app");
 const mongoose = require("mongoose");
-mongoose.connect("mongodb://localhost/books-db");
-//mongodb.connect() if you are not using mongoose wrapper
-const port = process.env.PORT || 8080;
 
+if (process.env.NODE_ENV !== "production") {
+  require("dot.env").config();
+}
+
+const port = process.env.PORT;
+const mongodbUri = process.env.MONGODB_URI;
+
+//mongodb.connect() if you are not using mongoose wrapper
+mongoose.connect(mongodbUri);
 const db = mongoose.connection;
 
 //db.on (on is an event listener)

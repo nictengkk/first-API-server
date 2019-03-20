@@ -100,28 +100,6 @@ describe("Books", () => {
           });
         });
     });
-
-    // xtest("should display book(s) of different author and title queries", async () => {
-    //   const expectedBooks = [
-    //     {
-    //       title: "Beating the Street",
-    //       author: "Peter Lynch"
-    //     },
-    //     { title: "Way of the Wolf", author: "Jordan Belfort" }
-    //   ];
-
-    //   await request(app)
-    //     .get(route())
-    //     .query({ author: "Peter Lynch", title: "Way of the Wolf" })
-    //     .expect(200)
-
-    //     .then(res => {
-    //       const books = res.body;
-    //       books.forEach((book, index) => {
-    //         expect(book).toEqual(expect.objectContaining(expectedBooks[index]));
-    //       });
-    //     });
-    // });
   });
 
   describe("[POST] Creates a new book entry", () => {
@@ -211,20 +189,6 @@ describe("Books", () => {
           return _id;
         });
 
-      // const res = await request(app)
-      //   .put(route(_id))
-      //   .set("Authorization", "Bearer my-awesome-token")
-      //   .send({
-      //     title: "Security Analysis",
-      //     author: "Benjamin Graham"
-      //   })
-      //   .expect(202);
-      // expect(res.body).toEqual(
-      //   expect.objectContaining({
-      //     title: "Security Analysis",
-      //     author: "Benjamin Graham"
-      //   })
-      // );
       return request(app)
         .put(route(_id))
         .set("Authorization", "Bearer my-awesome-token")
@@ -294,3 +258,25 @@ describe("Books", () => {
     });
   });
 });
+
+// xtest("should display book(s) of different author and title queries", async () => {
+//   const expectedBooks = [
+//     {
+//       title: "Beating the Street",
+//       author: "Peter Lynch"
+//     },
+//     { title: "Way of the Wolf", author: "Jordan Belfort" }
+//   ];
+
+//   await request(app)
+//     .get(route())
+//     .query({ author: "Peter Lynch", title: "Way of the Wolf" })
+//     .expect(200)
+
+//     .then(res => {
+//       const books = res.body;
+//       books.forEach((book, index) => {
+//         expect(book).toEqual(expect.objectContaining(expectedBooks[index]));
+//       });
+//     });
+// });
