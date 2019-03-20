@@ -1,4 +1,5 @@
 const express = require("express");
+const User = require("../models/user");
 const router = express.Router();
 const jwt = require("jsonwebtoken");
 
@@ -26,6 +27,18 @@ router
       res.status(400).json({ error: error.message });
     }
   });
+
+router.route("/register").post(async (req, res) => {
+  try {
+    const user = new User(req.body);
+    await User.init(); //does the indexing to ensure uniqueness of collection.
+    await user.save();
+    return res.status(204).end();
+  } catch (error) {
+    console.error(error.message);
+    return res.status(400).json({ error: error.message });
+  }
+});
 
 router.route("/").get((req, res) => {
   res.sendStatus(200);
