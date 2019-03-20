@@ -6,6 +6,6 @@ describe("index", () => {
     return request(app)
       .get("/")
       .expect(200)
-      .expect("Welcome to the HomePage", done);
+      .expect(200, done);
   });
 });

@@ -2,7 +2,7 @@ const app = require("./app");
 const mongoose = require("mongoose");
 
 if (process.env.NODE_ENV !== "production") {
-  require("dot.env").config();
+  require("dotenv").config();
 }
 
 const port = process.env.PORT;
