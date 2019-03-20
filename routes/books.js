@@ -2,12 +2,6 @@ const express = require("express");
 const router = express.Router();
 const Book = require("../models/books");
 
-const books = [
-  { id: "1", title: "The Intelligent Investor", author: "Benjamin Graham" },
-  { id: "2", title: "Way of the Wolf", author: "Jordan Belfort" },
-  { id: "3", title: "Beating the Street", author: "Peter Lynch" }
-];
-
 const verifyToken = (req, res, next) => {
   const { authorization } = req.headers;
   if (!authorization) {
@@ -25,18 +19,15 @@ router
   .route("/")
   .get((req, res) => {
     const query = req.query;
-    if (Object.entries(query).length === 0) {
-      res.status(200).json(books);
-    } else {
-      const keys = Object.keys(query);
-      const filteredBooks = books.filter(book =>
-        keys.some(key => book[key] === query[key])
-      );
-      res.status(200).json(filteredBooks);
-    }
+    Book.find((err, books) => {
+      if (err) {
+        return res.status(500);
+      }
+      return res.status(200).json(books);
+    });
   })
   .post(verifyToken, (req, res) => {
-    const book = new Book(req.body);
+    const book = new Book(req.body); //alternative is Book.create(req.body) => automatically includes middleware .save()
     book.save((err, book) => {
       if (err) {
         return res.status(500).end();
@@ -44,9 +35,6 @@ router
         return res.status(201).json(book);
       }
     });
-    // book.id = "4";
-    // books.push(book);
-    // res.status(201).json(book);
   });
 
 router
@@ -54,20 +42,43 @@ router
   .put(verifyToken, (req, res) => {
     const book = req.body;
     book.id = req.params.id;
-    if (book.id <= books.length) {
-      res.status(202).json(book); //can be chained because res.status returns an object that requires parsing.
-    } else {
-      res.status(403).end();
-    }
+    Book.findByIdAndUpdate(
+      book.id,
+      book,
+      { new: true, runValidators: true },
+      (err, book) => {
+        if (err) {
+          return res.status(500).end();
+        }
+        return res.status(202).json(book);
+      }
+    );
   })
-  .delete((req, res) => {
-    const book = req.body;
-    book.id = req.params.id;
-    if (book.id <= books.length) {
-      res.status(202).end();
-    } else {
-      res.status(400).end();
-    }
+  .delete(verifyToken, (req, res) => {
+    // const book = req.body;
+    foundId = req.params.id;
+    Book.findByIdAndDelete(foundId, (err, book) => {
+      if (err) {
+        return res.status(500).end();
+      }
+      if (!book) {
+        return res.status(404).end();
+      }
+      return res.status(202).end();
+    });
   });
 
 module.exports = router;
+
+// const keys = Object.keys(query);
+// console.log(keys);
+// const filteredBooks = books.filter(book =>
+//   keys.some(key => book[key] === query[key])
+// );
+// Book.find((err, filteredBooks) => {
+//   if (err) {
+//     return res.status(500);
+//   }
+//   return res.status(200).json(filteredBooks);
+// });
+// return res.status(200).json(filteredBooks);
