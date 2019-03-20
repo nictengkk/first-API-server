@@ -9,7 +9,11 @@ const port = process.env.PORT;
 const mongodbUri = process.env.MONGODB_URI;
 
 //mongodb.connect() if you are not using mongoose wrapper
-mongoose.connect(mongodbUri);
+mongoose.connect(mongodbUri, {
+  useCreateIndex: true,
+  useNewUrlParser: true,
+  useFindAndModify: false
+});
 const db = mongoose.connection;
 
 //db.on (on is an event listener)

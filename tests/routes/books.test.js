@@ -28,7 +28,11 @@ describe("Books", () => {
     jest.setTimeout(120000); //in case each default test timeout of 5s is not enough for the async to complete.
     mongoServer = new MongoMemoryServer(); //start mongodb in test mode
     const mongoUri = await mongoServer.getConnectionString();
-    await mongoose.connect(mongoUri);
+    await mongoose.connect(mongoUri, {
+      useCreateIndex: true,
+      useNewUrlParser: true,
+      useFindAndModify: false
+    });
     db = mongoose.connection;
   });
 
