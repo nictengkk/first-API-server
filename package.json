@@ -9,7 +9,7 @@
   "scripts": {
     "start": "NODE_ENV=production node server.js",
     "start:db": "mongod --dbpath /usr/local/var/mongodb",
-    "start:server": "nodemon server.js",
+    "start:server": "nodemon --inspect server.js",
     "dev": "npm run start:db & npm run start:server",
     "test": "jest",
     "test:watch": "jest --watch"
