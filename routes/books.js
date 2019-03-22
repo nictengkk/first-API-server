@@ -1,30 +1,43 @@
 const express = require("express");
 const router = express.Router();
 const Book = require("../models/books");
+const jwt = require("jsonwebtoken");
 
-const verifyToken = (req, res, next) => {
-  const { authorization } = req.headers;
-  if (!authorization) {
-    res.sendStatus(403);
-  } else {
-    if (authorization === "Bearer my-awesome-token") {
-      next();
-    } else {
-      res.sendStatus(403);
+const secret = "My super secret message";
+
+const verifyToken = async (req, res, next) => {
+  try {
+    const { authorization } = req.headers;
+    if (!authorization) {
+      return res.sendStatus(403);
     }
+    const token = authorization.split("Bearer ")[1];
+    const userData = await jwt.verify(token, secret);
+    if (userData) {
+      // res.status(201);
+      return next();
+    }
+  } catch (error) {
+    console.error(error.message);
+    return res.status(403).json({ error: error.message });
   }
 };
 
 router
   .route("/")
   .get((req, res) => {
-    const query = req.query;
-    Book.find((err, books) => {
-      if (err) {
-        return res.status(500);
-      }
-      return res.status(200).json(books);
-    });
+    // res.set("Access-Control-Allow-Origin");
+    const { author, title } = req.query;
+
+    if (title) {
+      return Book.find({ title }).then(book => res.json(book));
+    }
+
+    if (author) {
+      return Book.find({ author }).then(book => res.json(book));
+    }
+
+    return Book.find().then(book => res.json(book));
   })
   .post(verifyToken, (req, res) => {
     const book = new Book(req.body); //alternative is Book.create(req.body) => automatically includes middleware .save()
@@ -64,7 +77,7 @@ router
       if (!book) {
         return res.status(404).end();
       }
-      return res.status(202).end();
+      return res.status(202).send("The book has been deleted successfully");
     });
   });
 
