@@ -4,6 +4,11 @@ const { MongoMemoryServer } = require("mongodb-memory-server");
 const app = require("../../app");
 const Book = require("../../models/books");
 
+jest.mock("jsonwebtoken");
+const jwt = require("jsonwebtoken");
+jest.mock("../../models/user");
+const User = require("../../models/user");
+
 const route = (params = "") => {
   const path = "/api/v1/books";
   return `${path}/${params}`;
@@ -13,6 +18,7 @@ describe("Books", () => {
   let mongoServer;
   let db;
 
+  //beforeEach runs before each test
   beforeEach(async () => {
     await Book.insertMany([
       {
@@ -24,8 +30,9 @@ describe("Books", () => {
     ]);
   });
 
+  //beforeAll runs once only.
   beforeAll(async () => {
-    jest.setTimeout(120000); //in case each default test timeout of 5s is not enough for the async to complete.
+    // jest.setTimeout(120000); //in case each default test timeout of 5s is not enough for the async to complete.
     mongoServer = new MongoMemoryServer(); //start mongodb in test mode
     const mongoUri = await mongoServer.getConnectionString();
     await mongoose.connect(mongoUri, {
@@ -38,6 +45,7 @@ describe("Books", () => {
 
   afterEach(async () => {
     await db.dropCollection("books");
+    await jwt.verify.mockReset();
   });
 
   afterAll(async () => {
@@ -46,16 +54,15 @@ describe("Books", () => {
   });
 
   describe("[GET] Search for books", () => {
+    const expectedBooks = [
+      {
+        title: "The Intelligent Investor",
+        author: "Benjamin Graham"
+      },
+      { title: "Way of the Wolf", author: "Jordan Belfort" },
+      { title: "Beating the Street", author: "Peter Lynch" }
+    ];
     test("should display list of books", () => {
-      const expectedBooks = [
-        {
-          title: "The Intelligent Investor",
-          author: "Benjamin Graham"
-        },
-        { title: "Way of the Wolf", author: "Jordan Belfort" },
-        { title: "Beating the Street", author: "Peter Lynch" }
-      ];
-
       return request(app) //access the app
         .get(route())
         .expect(200)
@@ -83,14 +90,8 @@ describe("Books", () => {
 
     test("returns books matching the author query", () => {
       const expectedBooks = [
-        {
-          title: "The Intelligent Investor",
-          author: "Benjamin Graham"
-        },
-        { title: "Way of the Wolf", author: "Jordan Belfort" },
-        { title: "Beating the Street", author: "Peter Lynch" }
+        { title: "Way of the Wolf", author: "Jordan Belfort" }
       ];
-
       return request(app)
         .get(route())
         .query({ author: "Jordan Belfort" })
@@ -114,7 +115,10 @@ describe("Books", () => {
       },
       { title: "Way of the Wolf", author: "Jordan Belfort" }
     ];
+
     test("denies access when no token is provided", async () => {
+      jwt.verify.mockRejectedValueOnce(new Error("token invalid"));
+
       await request(app)
         .post(route())
         .set("Content-type", "application/json")
@@ -125,21 +129,24 @@ describe("Books", () => {
     });
 
     test("denies access when incorrect token is given", async () => {
+      jwt.verify.mockRejectedValueOnce(new Error("token invalid"));
+
       await request(app)
         .post(route())
-        .set("Authorization", "Bearer some-invalid-token")
+        .set("Authorization", "Bearer invalid-token")
         .set("Content-type", "application/json")
         .send({ title: "Rich Dad Poor Dad", author: "Robert Kiyosaki" })
-        .ok(res => res.status === 403)
-        .then(res => {
+        .catch(res => {
           expect(res.status).toBe(403);
         });
     });
 
     test("grants access when correct token is given", async () => {
+      jwt.verify.mockResolvedValueOnce({});
+
       const res = await request(app)
         .post(route())
-        .set("Authorization", "Bearer my-awesome-token")
+        .set("Authorization", "Bearer token")
         .set("Content-type", "application/json")
         .send({ title: "Rich Dad Poor Dad", author: "Robert Kiyosaki" })
         .expect(201);
@@ -154,6 +161,8 @@ describe("Books", () => {
 
   describe("[PUT] Edits an existing book entry", () => {
     test("denies access when no token is provided", async () => {
+      jwt.verify.mockRejectedValueOnce(new Error("token invalid"));
+
       const { _id } = await Book.findOne({ title: "The Intelligent Investor" });
       return request(app)
         .put(route(_id))
@@ -168,21 +177,26 @@ describe("Books", () => {
     });
 
     test("denies access when invalid token is provided", async () => {
-      const { _id } = await Book.findOne({ title: "The Intelligent Investor" });
-      return request(app)
-        .put(route(_id))
-        .set("Authorization", "Bearer some-invalid-token")
-        .send({
-          title: "One up on Wall Street",
-          author: "Peter Lynch"
-        })
-        .ok(res => res.status === 403)
-        .then(res => {
-          expect(res.status).toBe(403);
+      try {
+        jwt.verify.mockRejectedValueOnce(new Error("token invalid"));
+        const { _id } = await Book.findOne({
+          title: "The Intelligent Investor"
         });
+        await request(app)
+          .put(route(_id))
+          .set("Authorization", "Bearer some-invalid-token")
+          .send({
+            title: "One up on Wall Street",
+            author: "Peter Lynch"
+          });
+      } catch (error) {
+        const { response: res } = error;
+        expect(res.status).toEqual(403);
+      }
     });
 
     test("Successfully edit a book's title with the correct token", async () => {
+      jwt.verify.mockResolvedValueOnce({});
       //const {_id} = await Book.findOne({title: "The Intelligent Investor"})
       const _id = await request(app)
         .get(route())
@@ -211,7 +225,8 @@ describe("Books", () => {
         });
     });
 
-    test("Fails to edit book as no such id despite valid token", () => {
+    test("Fails to edit book as no such id despite valid token", async () => {
+      jwt.verify.mockRejectedValueOnce(new Error("token invalid"));
       const _id = "5c8fb5c41529bf25dcba41a7";
       return request(app)
         .put(route(_id))
@@ -221,13 +236,15 @@ describe("Books", () => {
           author: "Peter Lynch"
         })
         .catch(res => {
-          expect(res.status).toBe(500);
+          expect(res.status).toBe(403);
         });
     });
   });
 
   describe("[DELETE] Deletes an existing book entry", () => {
     test("denies access when no token is provided", async () => {
+      jwt.verify.mockRejectedValueOnce(new Error("token invalid"));
+
       const { _id } = await Book.findOne({ title: "The Intelligent Investor" });
       await request(app)
         .delete(route(_id))
@@ -238,6 +255,8 @@ describe("Books", () => {
     });
 
     test("Successfully delete a book entry", async () => {
+      jwt.verify.mockResolvedValueOnce({});
+
       const { _id } = await Book.findOne({ title: "Way of the Wolf" });
 
       await request(app)
@@ -250,6 +269,8 @@ describe("Books", () => {
     });
 
     test("Fails to delete a book as it does not exist", async () => {
+      jwt.verify.mockResolvedValueOnce(new Error("Book does not exist"));
+
       const _id = "5c8fb5c41529bf25dcba41a7";
 
       await request(app)
